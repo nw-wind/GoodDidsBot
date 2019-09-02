@@ -1,13 +1,11 @@
-#!/usr/bin/python
+#!/usr/bin/python3
+# -*- coding: utf-8 -*-
 
 import telebot
-from telebot import apihelper
 import logging
+import botConfig
 
-token=''
-
-apihelper.proxy = {'https':'socks5://userproxy:password@proxy_address:port'}
-bot=telebot.TeleBot(token)
+bot=telebot.TeleBot(botConfig.token)
 
 @bot.message_handler(commands=['start','help'])
 def reply_help(message):
