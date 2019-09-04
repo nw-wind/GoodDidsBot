@@ -5,10 +5,20 @@ import telebot
 from telebot import types
 import logging
 import random
+import datetime
+
+import google_sheets_api
 import botConfig
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+try:
+    ssID=open(botConfig.ssIdFileName).read()
+except IOError:
+    ssID=''
+    open(botConfig.ssIdFileName,'w').write(ssID)
+
 
 def loadTextFile(textFileName):
     r=dict();
@@ -24,6 +34,9 @@ def getHelp():
 
 def getCongrats():
     return loadTextFile(botConfig.congratsTextFile)
+
+def doAddToGoogleDocs(text):
+    google_sheets_api.add_line(ssID, botConfig.ssTitle, [1,datetime.datetime.today().strftime("%Y-%m-%d %H:%M:%S"),text])
 
 bot=telebot.TeleBot(botConfig.token)
 
@@ -56,6 +69,22 @@ def reply_dialog(message):
     if congratsText['status']=='error':
         logging.error("Cannot show help. {}".format(congratsText['text']))
         return
+    doAddToGoogleDocs(message.text)
     bot.reply_to(message,random.choice(congratsText['text']))
 
-bot.polling()
+if __name__ == '__main__':
+    #    try:
+    sheets = google_sheets_api.get_sheets(ssID)
+    for sheet in sheets:  # находим точное название листа
+        sh = sheet.get("properties", {}).get("title", "")
+        if sh == botConfig.ssTitle:
+            break
+    else:
+        # если ее нет то создаем
+        google_sheets_api.create_sheet(ssID, botConfig.ssTitle)
+        google_sheets_api.add_line(ssID, botConfig.ssTitle, [["Num", "Date", "Dids"]])
+
+        time.sleep(2)
+    #    except Exception as e:
+    #        print("Error occured. {}".format(str(e)))
+    bot.polling()
