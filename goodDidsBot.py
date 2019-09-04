@@ -6,19 +6,17 @@ from telebot import types
 import logging
 import random
 import datetime
+import mysql.connector
 
-import google_sheets_api
 import botConfig
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-try:
-    ssID=open(botConfig.ssIdFileName).read()
-except IOError:
-    ssID=''
-    open(botConfig.ssIdFileName,'w').write(ssID)
-
+def myLog(msg):
+    cursor=myConn.cursor()
+    cursor.execute("insert into log(dt,msg) values (now(), '{}')".format(msg))
+    myConn.commit()
 
 def loadTextFile(textFileName):
     r=dict();
@@ -35,8 +33,15 @@ def getHelp():
 def getCongrats():
     return loadTextFile(botConfig.congratsTextFile)
 
-def doAddToGoogleDocs(text):
-    google_sheets_api.add_line(ssID, botConfig.ssTitle, [1,datetime.datetime.today().strftime("%Y-%m-%d %H:%M:%S"),text])
+def doDbRecord(m):
+    logging.info("{}\t{}\t{} {}\t\"{}\"".format(m.from_user.id, m.from_user.username, m.from_user.first_name, m.from_user.last_name, m.text))
+    cursor=myConn.cursor()
+    cursor.execute("insert into did(dt,cid,did) values (now(),{},'{}')".format(m.from_user.id,m.text))
+    cursor.execute("select * from user where id = {}".format(m.from_user.id))
+    if cursor.fetchone() is None:
+        cursor.execute("insert into user(id,username,first_name,last_name) values ({},'{}','{}','{}')".format(m.from_user.id,m.from_user.username, m.from_user.first_name, m.from_user.last_name))
+    myConn.commit()
+    myLog("User \"{}\" enter \"{}\"".format(m.from_user.username, m.text))
 
 bot=telebot.TeleBot(botConfig.token)
 
@@ -69,22 +74,10 @@ def reply_dialog(message):
     if congratsText['status']=='error':
         logging.error("Cannot show help. {}".format(congratsText['text']))
         return
-    doAddToGoogleDocs(message.text)
+    doDbRecord(message)
     bot.reply_to(message,random.choice(congratsText['text']))
 
 if __name__ == '__main__':
-    #    try:
-    sheets = google_sheets_api.get_sheets(ssID)
-    for sheet in sheets:  # находим точное название листа
-        sh = sheet.get("properties", {}).get("title", "")
-        if sh == botConfig.ssTitle:
-            break
-    else:
-        # если ее нет то создаем
-        google_sheets_api.create_sheet(ssID, botConfig.ssTitle)
-        google_sheets_api.add_line(ssID, botConfig.ssTitle, [["Num", "Date", "Dids"]])
-
-        time.sleep(2)
-    #    except Exception as e:
-    #        print("Error occured. {}".format(str(e)))
+    myConn=mysql.connector.connect(host=botConfig.myHost, database=botConfig.myDb, user=botConfig.myUser, password=botConfig.myPassword)
+    myLog("Начало работы")
     bot.polling()

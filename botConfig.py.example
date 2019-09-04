@@ -2,7 +2,13 @@
 # -*- coding: utf-8 -*-
 from telebot import apihelper
 
-token='xxxxx'
-apihelper.proxy = {'https':'socks5://aaa:bbb@ccc:ddd'}
+token='980346919:AAG17BwpI2Oj0YaVNKrIJwJQEQ-ZRvLgSxg'
+apihelper.proxy = {'https':'socks5://112539549:qZ5LgQR9@orbtl.s5.opennetwork.cc:999'}
 helpTextFile = 'botHelp.txt'
 congratsTextFile = 'botCongrats.txt'
+ssTitle = 'Добрые дела'
+ssIdFileName = 'botSsId.txt'
+myHost = 'localhost'
+myDb = 'gdbot'
+myUser = 'gdbot'
+myPassword = 'gdbot'
