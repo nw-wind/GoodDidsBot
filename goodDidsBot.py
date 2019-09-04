@@ -74,8 +74,15 @@ def reply_dialog(message):
     if congratsText['status']=='error':
         logging.error("Cannot show help. {}".format(congratsText['text']))
         return
-    doDbRecord(message)
-    bot.reply_to(message,random.choice(congratsText['text']))
+    if (message.text.split(' '))[0] == 'покажи':
+        cursor=myConn.cursor()
+        logging.info("select * from did where cid={}".format(message.from_user.id))
+        cursor.execute("select * from did where cid={} order by dt".format(message.from_user.id))
+        s='\n'.join([t[2] for t in cursor.fetchall()])
+        bot.reply_to(message,s)
+    else:
+        doDbRecord(message)
+        bot.reply_to(message,random.choice(congratsText['text']))
 
 if __name__ == '__main__':
     myConn=mysql.connector.connect(host=botConfig.myHost, database=botConfig.myDb, user=botConfig.myUser, password=botConfig.myPassword)
