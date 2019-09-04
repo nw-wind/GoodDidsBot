@@ -2,5 +2,7 @@
 # -*- coding: utf-8 -*-
 from telebot import apihelper
 
-token='bot token'
-apihelper.proxy = {'https':'socks5://user:password@host:port'}
+token='xxxxx'
+apihelper.proxy = {'https':'socks5://aaa:bbb@ccc:ddd'}
+helpTextFile = 'botHelp.txt'
+congratsTextFile = 'botCongrats.txt'
