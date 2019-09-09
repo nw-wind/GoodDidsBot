@@ -35,6 +35,12 @@ def getHelp():
 def getCongrats():
     return loadTextFile(botConfig.congratsTextFile)
 
+def getPlanCongrats():
+    return loadTextFile(botConfig.planCongratsFile)
+
+def getTypeErrors():
+    return loadTextFile(botConfig.typeErrorsFile)
+
 def doDbRecord(m):
     try:
         logging.info("{}\t{}\t{} {}\t\"{}\"".format(m.from_user.id, m.from_user.username, m.from_user.first_name, m.from_user.last_name, m.text))
@@ -73,19 +79,32 @@ def reply_list(message):
 
 @bot.message_handler(func=lambda message: True)
 def reply_dialog(message):
-    congratsText=getCongrats()
-    if congratsText['status']=='error':
-        logging.error("Cannot show help. {}".format(congratsText['text']))
-        return
-    if (message.text.split(' '))[0] == 'покажи':
+    if (message.text.split(' '))[0].lower() == 'покажи':
         cursor=myConn.cursor()
         #logging.info("select * from did where cid=%s",(message.from_user.id,))
         cursor.execute("select * from did where cid=%s order by dt desc limit 5",(message.from_user.id,))
         s='\n'.join([t[2] for t in cursor.fetchall()])
         bot.reply_to(message,s)
-    else:
+    elif (message.text.split(' '))[0].lower() == 'я':
+        congratsText=getCongrats()
+        if congratsText['status']=='error':
+            logging.error("Cannot show help. {}".format(congratsText['text']))
+            return
         doDbRecord(message)
         bot.reply_to(message,random.choice(congratsText['text']))
+    elif (message.text.split(' '))[0].lower() == 'хочу':
+        planCongratsText=getPlanCongrats()
+        if planCongratsText['status']=='error':
+            logging.error("Cannot show help. {}".format(planCongratsText['text']))
+            return
+        doDbRecord(message)
+        bot.reply_to(message,random.choice(planCongratsText['text']))
+    else:
+        typeErrorsText=getTypeErrors()
+        if typeErrorsText['status']=='error':
+            logging.error("Cannot show help. {}".format(typeErrorsText['text']))
+            return
+        bot.reply_to(message,random.choice(typeErrorsText['text']))
 
 def interuppt_handler(signum, frame):
     logging.info("Ctrl-C pressed.")
