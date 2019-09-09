@@ -5,6 +5,7 @@ import telebot
 from telebot import types
 import logging
 import random
+import time,sys,signal
 import datetime
 import mysql.connector
 
@@ -12,10 +13,11 @@ import botConfig
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
+bot=telebot.TeleBot(botConfig.token)
 
 def myLog(msg):
     cursor=myConn.cursor()
-    cursor.execute("insert into log(dt,msg) values (now(), '{}')".format(msg))
+    cursor.execute("insert into log(dt,msg) values (now(), %s)",(msg,))
     myConn.commit()
 
 def loadTextFile(textFileName):
@@ -34,16 +36,17 @@ def getCongrats():
     return loadTextFile(botConfig.congratsTextFile)
 
 def doDbRecord(m):
-    logging.info("{}\t{}\t{} {}\t\"{}\"".format(m.from_user.id, m.from_user.username, m.from_user.first_name, m.from_user.last_name, m.text))
-    cursor=myConn.cursor()
-    cursor.execute("insert into did(dt,cid,did) values (now(),{},'{}')".format(m.from_user.id,m.text))
-    cursor.execute("select * from user where id = {}".format(m.from_user.id))
-    if cursor.fetchone() is None:
-        cursor.execute("insert into user(id,username,first_name,last_name) values ({},'{}','{}','{}')".format(m.from_user.id,m.from_user.username, m.from_user.first_name, m.from_user.last_name))
-    myConn.commit()
-    myLog("User \"{}\" enter \"{}\"".format(m.from_user.username, m.text))
-
-bot=telebot.TeleBot(botConfig.token)
+    try:
+        logging.info("{}\t{}\t{} {}\t\"{}\"".format(m.from_user.id, m.from_user.username, m.from_user.first_name, m.from_user.last_name, m.text))
+        cursor=myConn.cursor()
+        cursor.execute(("insert into did(dt,cid,did) values (now(),%s,%s)"),(m.from_user.id,m.text))
+        cursor.execute(("select * from user where id = %s"),(m.from_user.id,))
+        if cursor.fetchone() is None:
+            cursor.execute(("insert into user(id,username,first_name,last_name) values (%s,%s,%s,%s)"),(m.from_user.id,m.from_user.username,m.from_user.first_name,m.from_user.last_name))
+        myConn.commit()
+        myLog("User \"{}\" enter \"{}\"".format(m.from_user.username, m.text))
+    except Exception as e:
+        logging.error(str(e))
 
 @bot.message_handler(commands=['start','help'])
 def reply_help(message):
@@ -76,15 +79,25 @@ def reply_dialog(message):
         return
     if (message.text.split(' '))[0] == 'покажи':
         cursor=myConn.cursor()
-        logging.info("select * from did where cid={}".format(message.from_user.id))
-        cursor.execute("select * from did where cid={} order by dt".format(message.from_user.id))
+        #logging.info("select * from did where cid=%s",(message.from_user.id,))
+        cursor.execute("select * from did where cid=%s order by dt desc limit 5",(message.from_user.id,))
         s='\n'.join([t[2] for t in cursor.fetchall()])
         bot.reply_to(message,s)
     else:
         doDbRecord(message)
         bot.reply_to(message,random.choice(congratsText['text']))
 
+def interuppt_handler(signum, frame):
+    logging.info("Ctrl-C pressed.")
+    sys.exit(-2) 
+
 if __name__ == '__main__':
+    signal.signal(signal.SIGINT, interuppt_handler)
     myConn=mysql.connector.connect(host=botConfig.myHost, database=botConfig.myDb, user=botConfig.myUser, password=botConfig.myPassword)
     myLog("Начало работы")
-    bot.polling()
+    while True:
+        try:
+            bot.polling()
+        except Exception as e:
+            logging.error("Execution error: {}".format(str(e)))
+            time.sleep(2)
